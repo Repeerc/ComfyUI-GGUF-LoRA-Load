@@ -27,7 +27,7 @@ git clone https://github.com/city96/ComfyUI-GGUF ComfyUI/custom_nodes/ComfyUI-GG
 ## LoRA Supporting
 
 > [!IMPORTANT]  
-> Currently only support diffusers_lora format lora (trainning by kohya-ss/sd-script)
+> Currently only support diffusers_lora format lora (trainning by using kohya-ss/sd-script)
 
 ![image](https://github.com/user-attachments/assets/d627943f-7fd2-44ec-ad86-96d76804d543)
 
