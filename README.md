@@ -24,6 +24,12 @@ To install the custom node on standalone, open a CMD inside the "ComfyUI_windows
 git clone https://github.com/city96/ComfyUI-GGUF ComfyUI/custom_nodes/ComfyUI-GGUF
 .\python_embeded\python.exe -s -m pip install -r .\ComfyUI\custom_nodes\ComfyUI-GGUF\requirements.txt
 ```
+## LoRa Supporting
+
+Currently only support diffusers_lora format (trainning by sd-script)
+
+![image](https://github.com/user-attachments/assets/d627943f-7fd2-44ec-ad86-96d76804d543)
+
 
 ## Usage
 
