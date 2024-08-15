@@ -30,6 +30,7 @@ Currently only support diffusers_lora format (trainning by sd-script)
 
 ![image](https://github.com/user-attachments/assets/d627943f-7fd2-44ec-ad86-96d76804d543)
 
+tested lora: https://civitai.com/models/638665/shimoe-koharu-flux-dev-lora
 
 ## Usage
 
