@@ -39,9 +39,29 @@ class GGMLLayer(torch.nn.Module):
         super().__init__()
         self.weight = None
         self.bias = None
+        self.key_name = None
+        self.lora_WA_k_name = None
+        self.lora_WB_k_name = None
+        self.lora_alpha_k_name = None
 
     def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
         for k,v in state_dict.items():
+            # print("KEY:",k)
+            
+            if k.startswith('single_blocks.') and k[len(prefix):] == "weight":
+                key_name_in_base_model = k[len('single_blocks.'):-len('.weight')].replace(".", "_")             # e.g: single_blocks.30.linear2.weight
+                self.lora_WA_k_name = 'lora_unet_single_blocks_' + key_name_in_base_model + '.lora_up.weight'   #      lora_unet_single_blocks_30_linear2.lora_up.weight
+                self.lora_WB_k_name = 'lora_unet_single_blocks_' + key_name_in_base_model + '.lora_down.weight' #      lora_unet_single_blocks_30_linear2.lora_down.weight
+                self.lora_alpha_k_name = 'lora_unet_single_blocks_' + key_name_in_base_model  + '.alpha'
+
+            elif k.startswith('double_blocks.') and k[len(prefix):] == "weight":
+                key_name_in_base_model = k[len('double_blocks.'):-len('.weight')].replace(".", "_")
+                self.lora_WA_k_name = 'lora_unet_double_blocks_' + key_name_in_base_model + '.lora_up.weight'
+                self.lora_WB_k_name = 'lora_unet_double_blocks_' + key_name_in_base_model + '.lora_down.weight'
+                self.lora_alpha_k_name = 'lora_unet_double_blocks_' + key_name_in_base_model + '.alpha'
+                
+            self.key_name = k
+            
             if k[len(prefix):] == "weight":
                 self.weight = v
             elif k[len(prefix):] == "bias":
@@ -63,6 +83,11 @@ class GGMLLayer(torch.nn.Module):
         return (weight, bias)
 
 class GGMLOps(comfy.ops.disable_weight_init):
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+        self.Linear.loras = {}
+        self.Linear.loras_strength = {}
+        
     """
     Dequantize weights on the fly before doing the compute
     """
@@ -70,10 +95,26 @@ class GGMLOps(comfy.ops.disable_weight_init):
         def __init__(self, *args, device=None, dtype=None, **kwargs):
             super().__init__(device=device, dtype=dtype)
             self.parameters_manual_cast = torch.float32
-
         def forward(self, x):
-            with torch.no_grad():
-                weight, bias = self.get_weights(x.dtype)
-                x = torch.nn.functional.linear(x, weight, bias)
-                del weight, bias
+            weight, bias = self.get_weights(x.dtype)
+            
+            
+            for lora_name, v in self.loras.items():
+                if self.lora_WA_k_name in v:
+                    strength = self.loras_strength[lora_name]
+                    lora_WA_k = v[self.lora_WA_k_name]
+                    lora_WB_k = v[self.lora_WB_k_name]
+                    if self.lora_alpha_k_name in v:
+                        alpha = v[self.lora_alpha_k_name].item()
+                        alpha /= lora_WB_k.shape[0]
+                    else:
+                        alpha = 1.0
+                    
+                    lora_WA_k = lora_WA_k.to(weight.device).to(x.dtype)
+                    lora_WB_k = lora_WB_k.to(weight.device).to(x.dtype)
+                    lora_diff = (strength * alpha) * torch.matmul(lora_WA_k, lora_WB_k)
+                    weight += lora_diff
+                    del lora_diff, lora_WA_k, lora_WB_k
+            x = torch.nn.functional.linear(x, weight, bias)
+            del weight, bias
             return x
