@@ -1,5 +1,4 @@
 # (c) City96 || Apache-2.0 (apache.org/licenses/LICENSE-2.0)
-from copy import deepcopy
 import gguf
 import logging
 
@@ -9,6 +8,7 @@ import comfy.model_management
 import folder_paths
 
 import safetensors
+import uuid
 
 from .ops import GGMLTensor, GGMLOps
 
@@ -65,8 +65,20 @@ class UnetLoaderGGUF:
         return (model, )
 
 class UnetGGUFLora:
+    def __init__(self) -> None:
+        self.id = str(uuid.uuid4())
+        self.ggmlops = None
+        # print('init:',self.id  )
+    def __del__(self):
+        # print('remove:',self.id  )
+        if self.ggmlops is not None:
+            del self.ggmlops.Linear.loras[self.id]
+            del self.ggmlops.Linear.loras_strength[self.id]
+            
+        
     @classmethod
     def INPUT_TYPES(s):
+        
         lora_names = [x for x in folder_paths.get_filename_list("loras") if x.endswith(".safetensors")]
         lora_names.insert(0, "None")
         return {
@@ -89,9 +101,9 @@ class UnetGGUFLora:
             with safetensors.safe_open(folder_paths.get_full_path("loras", lora_name), framework="pt", device='cuda') as f:
                 for k in f.keys():
                     lora_tensor[k] = f.get_tensor(k)
-            ggmlops = unet_model.ggmlops
-            ggmlops.Linear.loras[lora_name] = lora_tensor
-            ggmlops.Linear.loras_strength[lora_name] = strength_model
+            self.ggmlops = unet_model.ggmlops
+            self.ggmlops.Linear.loras[self.id] = lora_tensor
+            self.ggmlops.Linear.loras_strength[self.id] = strength_model
             
         return (unet_model, lora_name, strength_model, )            
                     
