@@ -99,9 +99,9 @@ class GGMLOps(comfy.ops.disable_weight_init):
             weight, bias = self.get_weights(x.dtype)
             
             
-            for lora_name, v in self.loras.items():
+            for lora_blk, v in self.loras.items():
                 if self.lora_WA_k_name in v:
-                    strength = self.loras_strength[lora_name]
+                    strength = self.loras_strength[lora_blk]
                     lora_WA_k = v[self.lora_WA_k_name]
                     lora_WB_k = v[self.lora_WB_k_name]
                     if self.lora_alpha_k_name in v:
